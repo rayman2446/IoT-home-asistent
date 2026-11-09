@@ -1,62 +1,111 @@
 # Slimme klimaatregeling per ruimte
 
+## Beschrijving
+
+Dit project richt zich op een energiezuinige en slimme verwarmingsregeling voor meerdere ruimtes in een woning of klein kantoor. Het doel is om elke kamer alleen te verwarmen wanneer dat nodig is, op basis van actuele temperatuur, aanwezigheid en een vooraf ingestelde energiebesparingsstrategie.
+
+Het systeem bestaat uit meerdere ESP32-sensor nodes, elk uitgerust met een temperatuursensor, bewegingssensor en lokaal relais. De sensoren meten continu de toestand van de ruimte en sturen deze gegevens via MQTT naar een centrale hub. Daarna verwerkt Home Assistant de informatie, toont een overzicht op een dashboard en stuurt terug aansturingen naar de juiste ruimte. Zo ontstaat een gesloten regelkring die de verwarming automatisch kan aanpassen op basis van werkelijke behoefte.
+
+Het project is gemaakt om een bestaande CV-installatie te laten samenwerken met een slimme ruimte-eigen regeling. Hierdoor kan onnodige verwarming worden voorkomen, zonder het comfort van bewoners te verminderen. Het maakt het systeem bijzonder omdat het niet alleen temperatuur meet, maar ook aanwezigheid en locatie-aware gedrag combineert in een centrale, uitbreidbare IoT-architectuur.
+
+### Sequence of operation
+
+Na het opzetten van de hardware en software verloopt de werking als volgt:
+
+1. De ESP32 node start op en maakt verbinding met het lokale WiFi-netwerk.
+2. De DHT22 meet de temperatuur en luchtvochtigheid van de ruimte.
+3. De PIR-sensor detecteert beweging en geeft een binaire aanwezigheidssignaal.
+4. De node publiceert de metingen via MQTT naar de broker.
+5. Home Assistant ontvangt de data en toont deze op het dashboard.
+6. Op basis van regels voor aanwezigheid, temperatuur en tijd wordt bepaald of een ruimte verwarmd moet worden.
+7. Wanneer een ruimte niet in gebruik is, stuurt Home Assistant een commando terug naar de ESP32 van die ruimte.
+8. De ESP32 schakelt het relais uit en voorkomt zo onnodige warmte in die kamer.
+9. Wanneer een ruimte weer in gebruik is, kan de verwarming automatisch terug worden ingeschakeld.
+10. De status van alle ruimtes, sensoren en gebeurtenissen blijft zichtbaar in de grafieken en dashboards.
+
+Deze procedure maakt het systeem geschikt voor niet-technische gebruikers die het eenvoudig willen bedienen via Home Assistant.
+
 ## Probleemstelling
 
-Dit project onderzoekt hoe huishoudens en kleine kantoren energieverspilling kunnen beperken door ruimtes alleen te verwarmen wanneer dat nodig is. Vijf sensornodes meten per ruimte de temperatuur, luchtvochtigheid en beweging. Een centrale regelaar gebruikt deze metingen en de ingestelde voorkeuren om warmtevraag te bepalen.
+De centrale uitdaging is energieverspilling door verwarming van ruimtes die niet gebruikt worden. Veel systemen laten de verwarming in een kamer doorlopen, zelfs als de ruimte leeg is. De oplossing is een slimme, per-ruimte werkende regeling die opnieuw bepaalt of de ruimte actief gebruikt wordt en of verwarming nog nodig is.
 
-Het systeem is ontworpen als een gesloten regelkring: sensordata gaat naar de centrale backend en schakelcommando's gaan terug naar de betreffende ruimte. De precieze configuratie en werking zijn afhankelijk van de uiteindelijke hardware en software die wordt opgeleverd. Deze README beschrijft het beoogde ontwerp; de genoemde onderdelen zijn niet automatisch al gerealiseerd of getest.
+Het systeem moet daarom een gesloten regelkring vormen:
+
+- sensoren meten temperatuur en beweging
+- data wordt lokaal naar een centrale controller gestuurd
+- de controller bepaalt of een ruimte verwarmd dient te worden
+- een relais of interface stuurt de lokale verwarmingsaansturing aan of uit
+- Home Assistant toont de status en bewaart historische data
 
 ## Systeemontwerp
 
 ```mermaid
 flowchart LR
-    S1[Ruimte 1: ESP32 + DHT22 + PIR] -->|MQTT via Wi-Fi| M[ Mosquitto-broker ]
-    S2[Ruimte 2: ESP32 + DHT22 + PIR] -->|MQTT via Wi-Fi| M
-    S5[Ruimtes 3-5: ESP32 + DHT22 + PIR] -->|MQTT via Wi-Fi| M
-    M <--> HA[Home Assistant: dashboard en regels]
-    HA --> DB[InfluxDB: historische meetwaarden]
-    HA -->|MQTT-commando| S1
-    HA -->|MQTT-commando| S2
-    HA -->|MQTT-commando| S5
-    HA -->|warmtevraag, via geschikte interface| B[CV-ketel / zonekleppen]
+    R1[Ruimte 1: ESP32 + DHT22 + PIR] -->|MQTT| B[Mosquitto Broker]
+    R2[Ruimte 2: ESP32 + DHT22 + PIR] -->|MQTT| B
+    R3[Ruimte 3: ESP32 + DHT22 + PIR] -->|MQTT| B
+    R4[Ruimte 4: ESP32 + DHT22 + PIR] -->|MQTT| B
+    R5[Ruimte 5: ESP32 + DHT22 + PIR] -->|MQTT| B
+    B --> HA[Home Assistant]
+    HA --> DB[InfluxDB]
+    HA -->|schakelcommando| R1
+    HA -->|schakelcommando| R2
+    HA -->|schakelcommando| R3
+    HA -->|schakelcommando| R4
+    HA -->|schakelcommando| R5
+    HA --> CV[CV-ketel / zonecontrole]
 ```
 
-Elke kamer heeft een ESP32-edge-device. De ESP32 publiceert meetwaarden en status via MQTT. Home Assistant verwerkt de gegevens, toont de toestand van het systeem en stuurt opdrachten terug. InfluxDB kan worden gebruikt voor historische meetwaarden en grafieken.
+### Belangrijk ontwerpprincipe
 
-### Beoogde regelstrategie
+De installatie gebruikt een lokale beoordeling per kamer en een gecentraliseerde controle in Home Assistant. Er is een afzonderlijke warmtevraag per ruimte en een centrale controlemogelijkheid voor de CV-ketel. De exacte ketelintegratie moet worden uitgevoerd volgens de installatiehandleiding van de gebruikte ketel en door een bevoegde installateur, omdat een onjuiste aansluiting op de centrale verwarmingsinstallatie veiligheidsrisico's kan opleveren.
 
-- Gebruik temperatuur en aanwezigheid per kamer om te bepalen of er warmtevraag is.
-- Een instelbare periode zonder bewegingsdetectie (bijvoorbeeld 12 uur) kan energiebesparing activeren. Kies deze periode bewust: een PIR-sensor stelt alleen beweging vast en bewijst niet dat een ruimte leeg is.
-- Laat Home Assistant de centrale warmtevraag bepalen. De ketel mag alleen warmte leveren wanneer minstens één zone dat vraagt, binnen de mogelijkheden van de bestaande installatie.
-- Stel veilige minimum- en maximumtemperaturen in en zorg dat vorstbeveiliging en de bestaande ketel-/installatiebeveiligingen behouden blijven.
-- Bij ontbrekende of ongeldige sensordata moet het systeem een foutstatus tonen en een vooraf bepaalde veilige toestand aannemen; vertrouw niet op een enkel PIR-signaal.
+## Hardware, sensoren en actuatoren
 
-## Hardware
+### Edge device per ruimte
 
-### Per ruimte (5 kamers)
+Elke ruimte krijgt een eigen sensor-node op basis van een ESP32.
 
-| Onderdeel | Beoogde functie |
-|---|---|
-| ESP32 development board | Sensoren uitlezen, MQTT-communicatie en lokale aansturing |
-| DHT22 | Temperatuur (°C) en relatieve luchtvochtigheid (%) meten |
-| HC-SR501 PIR | Beweging detecteren als binaire waarde (0/1) |
-| 1-kanaals relaismodule | Een geschikt zoneventiel of andere daarvoor ontworpen belasting schakelen, indien elektrisch en thermisch geschikt |
+- ESP32 Development Board
+- DHT22 voor temperatuur en luchtvochtigheid
+- HC-SR501 PIR-sensor voor beweging
+- 1-kanaals relaismodule voor lokale aansturing
+- Voeding volgens het gekozen ontwerp, bijvoorbeeld 5V via USB of een stabiele DC-voeding
 
-### Centrale verwarming
+### Centrale verwarmingsintegratie
 
-De installatie is beschreven als een Vaillant ecoTEC plus VCW 346/5-5 (E-BE) R6. De exacte ketelvariant, aansluitingen en compatibiliteit moeten vóór integratie worden gecontroleerd aan de hand van de officiële installatiehandleiding en door een bevoegde installateur.
+De installatie is gekoppeld aan een Vaillant ecoTEC plus VCW 346/5-5 (E-BE) R6. De exacte interface naar de CV-ketel is afhankelijk van de installatie en het type contact en schakeling dat aanwezig is.
 
-De beoogde architectuur heeft lokale zoneaansturing en een centrale warmtevraag. Een interface naar de ketel kan nodig zijn, maar de aansluitklemmen en het schakelschema verschillen per installatie. Sluit een ESP32 of relais niet rechtstreeks aan op ketelaansluitingen op basis van generieke voorbeelden. Werk aan netspanning, ketelbesturing en vaste verwarmingsinstallaties moet door een bevoegde vakpersoon worden uitgevoerd. Gebruik geschikte galvanische scheiding, componenten met passende ratings en behoud alle oorspronkelijke veiligheidsvoorzieningen.
+Belangrijk:
 
-## Communicatie, backend en dashboard
+- De ketel mag alleen aanslaan als minimaal één ruimte warmtevraag heeft.
+- Een lokaal relais is niet automatisch een veilige of correcte interface met de ketel.
+- De definitieve aansluiting op de centrale verwarmingsinstallatie moet volgens de fabrikantdocumentatie en door een bevoegde vakman gebeuren.
+- In de praktijk kan een geschikte zoneaansturing, een interfacekaart of een vooraf goedgekeurde schakeling nodig zijn.
 
-- **Protocol:** MQTT over het lokale Wi-Fi-netwerk voor sensormetingen, status en opdrachten.
-- **Broker:** Eclipse Mosquitto.
-- **Automatisering en dashboard:** Home Assistant, bijvoorbeeld op een Raspberry Pi 4.
-- **Historie:** InfluxDB voor tijdreeksen, gekoppeld aan Home Assistant voor grafieken.
-- **Externe toegang:** gebruik alleen een bewust beveiligde oplossing. Stel services niet rechtstreeks bloot aan internet; Cloudflare Tunnel is een mogelijke optie, maar vereist veilige account-, toegangs- en tunnelconfiguratie.
+## IoT-communicatie en backend
 
-Voorbeeld van een logische topicindeling (pas deze aan de daadwerkelijke firmwareconfiguratie aan):
+### MQTT
+
+MQTT is gekozen als communicatieprotocool omdat het licht, betrouwbaar en ideaal is voor IoT-apparaten zoals ESP32-nodes.
+
+Voordelen:
+
+- laag bandbreedtegebruik
+- eenvoudig te schalen naar meerdere ruimtes
+- geschikt voor statusinformatie en besturing
+- goed te integreren met Home Assistant
+
+### Broker en services
+
+De centrale backend op een Raspberry Pi 4 bevat typischerwijs:
+
+- Mosquitto MQTT-broker
+- Home Assistant voor dashboards en automations
+- InfluxDB voor tijdreeksdata
+- Docker Compose voor het uitvoeren van meerdere services in containers
+
+### Voorbeeld topicstructuur
 
 ```text
 home/room1/temperature
@@ -64,84 +113,152 @@ home/room1/humidity
 home/room1/motion
 home/room1/relay/set
 home/room1/status
+
+home/room2/temperature
+home/room2/humidity
+home/room2/motion
+home/room2/relay/set
+home/room2/status
 ```
 
-De status kan bijvoorbeeld `online`, `offline` of een foutcode aangeven. Configureer MQTT-authenticatie en TLS wanneer de broker en clients correct zijn ingericht. Gebruik unieke credentials en geef clients alleen de benodigde rechten.
+Deze topics kunnen worden aangepast aan de definitieve firmwareconfiguratie.
 
-## Materialen en methodes
+## Dashboard, logica en actie
 
-- **Edge hardware:** ESP32, DHT22, HC-SR501 en geschikte relais-/zone-interface per kamer.
-- **Firmware:** Arduino/C++ voor ESP32; MQTT-client, seriële logging, foutafhandeling en watchdog.
-- **Backend:** Raspberry Pi 4 met Docker Compose, Mosquitto, Home Assistant en optioneel InfluxDB.
-- **Methodologie:** bouw en test eerst één laagspanningsprototype, valideer sensorwaarden en MQTT-berichten, en breid daarna gecontroleerd uit naar vijf kamers. Test automatiseringen zonder aangesloten verwarmingsactuator voordat de installatie wordt geïntegreerd.
+Het systeem gebruikt Home Assistant als gebruikersinterface en regelengine.
 
-## Aan de slag
+### Functies van het dashboard
 
-De onderstaande stappen beschrijven de beoogde opzet. Pas ze aan zodra de configuratiebestanden en firmware in de repository beschikbaar zijn.
+- meten per ruimte van temperatuur en luchtvochtigheid
+- status van beweging per kamer
+- grafieken over tijd met InfluxDB
+- relays aan/uit-status
+- meldingen bij energiebesparingsmodus
 
-1. **Backend voorbereiden:** installeer Docker en Docker Compose op de Raspberry Pi en maak de benodigde configuratie en persistente opslag voor de containers aan.
-2. **Secrets instellen:** configureer Wi-Fi- en MQTT-gegevens buiten de versiebeheerbestanden. Commit geen wachtwoorden, tokens, private keys of certificaten. Voeg lokale secrets-bestanden toe aan `.gitignore`.
-3. **Broker en services starten:** start Mosquitto, Home Assistant en eventueel InfluxDB met de definitieve Compose-configuratie. Controleer de logs en bereikbaarheid op het lokale netwerk.
-4. **Eén edge-device configureren:** vul de juiste Wi-Fi- en MQTT-instellingen lokaal in, controleer de pinconfiguratie van de sensoren en bouw/upload de firmware met de voor dit board geschikte watchdogconfiguratie.
-5. **Sensoren valideren:** controleer de temperatuur in °C, luchtvochtigheid in %, PIR-status, MQTT-publicaties en online/offline-status in Home Assistant.
-6. **Automatiseringen testen:** test eerst met een gesimuleerde of losgekoppelde actuator. Controleer temperatuurgrenzen, verlies van netwerkverbinding, ontbrekende meetwaarden en de energiebesparingsmelding.
-7. **Opschalen:** herhaal de test voor de overige vier kamers en geef iedere node een unieke naam en topicruimte.
-8. **Verwarmingsinstallatie aansluiten:** laat compatibiliteit, ketelinterface, zoneventielen en elektrische veiligheid controleren en aansluiten door een bevoegde installateur. Voer daarna een gecontroleerde functionele test uit.
+### Automatiseringslogica
 
-## Beveiliging en betrouwbaarheid
+Typische regels zijn:
 
-- Bewaar geheimen lokaal; gebruik geen echte credentials in de repository. Een `secrets.h`-bestand is alleen geschikt als het aantoonbaar uit versiebeheer is gehouden; gebruik waar mogelijk een lokale configuratie of build-secrets.
-- Schakel MQTT-authenticatie en TLS in waar passend en beheer certificaten veilig.
-- Gebruik een ESP32-watchdog en reconnection-logica, maar behandel een herstart niet als vervanging voor foutafhandeling of veilige hardware.
-- Publiceer de status van iedere node en signaleer verouderde meetwaarden in Home Assistant.
-- Beperk externe toegang en gebruik sterke, unieke wachtwoorden en waar beschikbaar multi-factor-authenticatie.
-- Houd ketelregelingen, vorstbeveiliging en handmatige bediening bruikbaar als de backend of Wi-Fi uitvalt.
+- Als een ruimte een bepaalde tijd geen beweging detecteert, wordt de ruimte als inactief beschouwd.
+- Als de ruimte niet in gebruik is en de temperatuur boven het ingestelde minimum ligt, kan de verwarming worden uitgeschakeld.
+- Als een ruimte weer beweging detecteert, kan het systeem opnieuw het verwarmingsbeleid evalueren.
+- Als ten minste één kamer warmtevraag heeft, kan de centrale warmtevraag worden geactiveerd.
+- Bij netwerkuitval, sensorfout of ongeldige data geeft het systeem een duidelijke statusmelding.
+
+## Nice-to-haves
+
+Om het project extra sterk te maken, kunnen de volgende uitbreidingen worden toegevoegd:
+
+- meerdere sensornodes in vijf kamers met temperatuur- en bewegingsdata
+- bidirectionele communicatie tussen ESP32 en Home Assistant
+- containerisatie met Docker voor broker, dashboard en database
+- historische data in InfluxDB met grafieken in Home Assistant
+- veilige opslag van secrets buiten de repository
+- hardware watchdog op de ESP32
+- TLS voor MQTT
+- seriële logging en aparte status topics zoals `/status/kamerX`
 
 ## Documentatie
 
-- [Documentatie en media](./docs/)
-- [Hardware-overzicht](./hardware/README.md)
-- [Design document](./docs/design.md) (toevoegen of bijwerken wanneer beschikbaar)
-- [Gebruikershandleiding](./docs/user-manual.md) (toevoegen of bijwerken wanneer beschikbaar)
+Gedetailleerde documentatie is te vinden in de [docs](./docs/) map.
 
-Een elektrisch schema moet de ESP32, sensoren, laagspanningsvoeding en relais-/interface duidelijk tonen. Documenteer ketel- en netspanningsaansluitingen uitsluitend volgens de modelspecifieke documentatie en laat deze door een bevoegde installateur beoordelen.
+- [Design Document](./docs/design.md)
+- [User Manual](./docs/user-manual.md)
+- [Hardware documentatie](./hardware/README.md)
 
-## Resultaten en demonstratie
+Voor de fysieke opzet is ook een elektrisch schema nodig dat de ESP32, DHT22, HC-SR501, relaismodule en voeding laat zien. Dit schema moet in de repository worden toegevoegd in de juiste documentatiefolder.
 
-Vul dit onderdeel aan met gemeten resultaten zodra het systeem is getest:
+## Resultaten
 
-- Sensorafwijking en meetinterval per kamer.
-- Betrouwbaarheid van MQTT-verbindingen en statusmeldingen.
-- Gedrag van automatiseringen bij aanwezigheid, temperatuurwijzigingen en netwerkuitval.
-- Energieverbruik vóór en na de test, indien op een betrouwbare manier gemeten.
-- Afbeeldingen van het dashboard en de veilige prototype-opstelling.
+De volgende resultaten kunnen na het testen van het systeem worden vastgelegd:
 
-Maak eventueel een demonstratievideo waarin sensormetingen, dashboardstatus en een veilige laagspanningsactuator zichtbaar zijn. Toon geen onveilige of onbevoegde werkzaamheden aan de ketel of netspanning.
+- betrouwbaarheid van de sensorwaarden per kamer
+- tijdsafhankelijk gedrag van aanwezigheid en temperatuur
+- energiebesparing die met het systeem is bereikt
+- grafieken in Home Assistant en InfluxDB
+- opstelling van de hardware en status van de centrale regelkring
 
-## Voortgang
+## Aan de slag
 
-Werk de checklist bij op basis van daadwerkelijk uitgevoerde en geteste onderdelen.
+Volg de onderstaande stappen om het systeem op te zetten.
 
-- [ ] Probleemstelling en systeemontwerp gedocumenteerd
-- [ ] Componenten en elektrisch schema gecontroleerd
-- [ ] Eén ESP32-node met sensoren gevalideerd
-- [ ] MQTT-communicatie en statusmeldingen getest
-- [ ] Home Assistant-dashboard en automatiseringen getest
-- [ ] Historische opslag met InfluxDB getest
-- [ ] Vijf nodes afzonderlijk getest
-- [ ] Veiligheid en ketelcompatibiliteit beoordeeld door een bevoegde installateur
-- [ ] Demonstratie en resultaten toegevoegd
+### 1. Backend voorbereiden
 
-### Bekende aandachtspunten
+- Installeer Docker en Docker Compose op de Raspberry Pi
+- Maak een projectmap aan voor de services
+- Configureer Mosquitto, Home Assistant en InfluxDB in een `docker-compose.yml`
+- Zorg ervoor dat alle volumes persistent zijn
 
-- Een PIR-sensor detecteert beweging, niet aanwezigheid met absolute zekerheid.
-- De ketelinterface en geschikte zoneventielen zijn afhankelijk van de concrete installatie.
-- Behandel verlies van Wi-Fi, MQTT of sensordata expliciet in de automatiseringen.
+### 2. Secrets configureren
+
+- Zet WiFi-gegevens, MQTT-credentials en andere geheimen buiten de repository
+- Gebruik een lokaal secrets-bestand dat niet in Git wordt opgeslagen
+- Voeg het bestand toe aan `.gitignore`
+
+### 3. ESP32 firmware opzetten
+
+- Installeer de Arduino IDE of PlatformIO
+- Configureer de juiste WiFi SSID en wachtwoord
+- Configureer MQTT-broker IP-adres, gebruikersnaam en wachtwoord
+- Configureer de GPIO-pinnen voor DHT22, PIR en relais
+- Upload de code naar de ESP32
+
+### 4. Sensoren testen
+
+- Controleer of de sensorwaarden correct worden gelezen
+- Controleer de seriële output in de monitor
+- Controleer of de data zichtbaar is in Home Assistant
+- Controleer of de status topics correct worden gepubliceerd
+
+### 5. Home Assistant automations
+
+- Maak een dashboard met overzicht van alle kamers
+- Configureer regels voor beweging, temperatuur en energiebesparing
+- Voeg meldingen toe voor energiebesparingsmodus en fouten
+- Test het systeem eerst zonder de werkelijke ketelintegratie
+
+### 6. Veilig integratie met CV-installatie
+
+- Controleer de installatiehandleiding van de ketel
+- Laat de aansluiting op bestaande verwarmingscomponenten beoordelen door een bevoegde installateur
+- Test de centrale warmtevraag alleen in een veilige en goed gecontroleerde installatie
+
+## Discussie
+
+### Wat werkt al?
+
+- Hardwareconcept voor meerdere kamers is uitgewerkt
+- ESP32-sensor nodes kunnen worden gebruikt voor temperatuur en aanwezigheid
+- MQTT is geschikt voor communicatiemodellen in IoT
+- Home Assistant kan dienen als centrale dashboard- en regelengine
+- InfluxDB biedt historische data voor analyse
+
+### Komende stappen
+
+1. Volledige ESP32 firmware ontwikkelen en testen
+2. MQTT-topics en statuslogging vastleggen
+3. Home Assistant-dashboard opzetten
+4. Docker omgeving voorbereiden en starten
+5. Testen van de volledige gesloten regelkring
+6. Integratie met de CV-ketel in een veilige opstelling
+
+### Bekende bugs of beperkingen
+
+- PIR-sensoren detecteren beweging, maar zijn geen perfecte aanwezigheidssensor
+- WiFi- of MQTT-onderbrekingen moeten altijd veilig worden behandeld
+- De exacte ketelinterface hangt af van de installatiespecificatie
+- De verwarming moet op een veilige, goedgekeurde manier worden aangesloten
 
 ## Personen
 
-Vervang onderstaande placeholders door de projectleden en hun rollen:
+- Student 1 — Hardware en elektrotechnische opbouw
+- Student 2 — Firmware en ESP32-programming
+- Student 3 — Backend, MQTT, Home Assistant en documentatie
 
-- Student 1 — Hardware
-- Student 2 — Firmware
-- Student 3 — Backend en dashboard
+## Extra opmerkingen
+
+Het project is bedoeld als praktisch en educatief IoT-ontwerp voor slimme verwarming per ruimte. De kernidee is eenvoudig: meet wat er in een ruimte gebeurt, beslis of er warmtevraag is en schakel dan slim op basis van die informatie. De volledige realisatie vereist een goed doordachte hardware- en veiligheidsuitwerking, vooral bij de interactie met een centrale CV-installatie.
+
+---
+
+Dit bestand kan verder worden aangevuld met echte foto’s, meetresultaten, schematische afbeeldingen en links naar de verschillende documentatiebestanden zodra deze beschikbaar zijn in de repository.
