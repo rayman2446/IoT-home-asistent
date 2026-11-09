@@ -1,4 +1,4 @@
-# [Projectnaam]
+# [smarthome heating]
 
 > **⚠️ Verander deze titel naar de naam van jullie project!**
 
