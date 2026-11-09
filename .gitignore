@@ -1,0 +1,255 @@
+# ============================================================================
+# TWINCAT3 - Official GitHub gitignore
+# ============================================================================
+# Based on: https://github.com/github/gitignore/blob/main/TwinCAT3.gitignore
+# Combined with VisualStudio.gitignore for VS integration
+#
+# IMPORTANT: Requires TwinCAT XAE settings configuration!
+# See CHECKLIST.md for required TwinCAT settings changes.
+
+# TwinCAT PLC
+*.plcproj.bak
+*.plcproj.orig
+*.tpy
+*.tclrs
+*.library
+*.compiled-library
+*.compileinfo
+*.asm
+*.core
+LineIDs.dbg
+LineIDs.dbg.bak
+
+# TwinCAT C++ and shared types
+# IMPORTANT: Don't include the tmc-file rule if:
+# 1. You've got TwinCAT C++ projects (tmc created manually for C++)
+# 2. You've created a standalone PLC-project with events (stored in TMC)
+# 3. Shared tmc files are used to exchange data types
+*.tmc
+*.tmcRefac
+
+# But allow TMC files in specific subfolders
+!**/TMC/*
+
+# TwinCAT project files
+*.tsproj.bak
+*.tsproj.b?k
+*.tsproj.orig
+*.tspproj.bak
+*.xti.bak
+*.xti.bk?
+*.xti.orig
+*.xtv
+*.xtv.bak
+*.xtv.bk?
+*.xt?.bk?
+*.xt?.orig
+
+# Multiuser specific
+**/.TcGit/
+
+# Exclude not required folders
+**/_Boot/
+**/_CompileInfo/
+**/_Libraries/
+**/_ModuleInstall/
+**/_Deployment/
+**/_Repository/
+
+# Exception for custom/third-party libraries
+# To include specific library directory, use pattern: !/**/_Libraries/<directory name>/
+!**/Compiled Library/*
+
+# TwinCAT HMI files
+.engineering_servers/
+liveview_*
+*.cache
+*.db-shm
+*.db-wal
+*.pid
+.hmiframework/
+.hmipkgs/*-*-*-*/
+tchmipublish.journal.json
+
+# ============================================================================
+# VISUAL STUDIO - for TwinCAT integration
+# ============================================================================
+
+## Visual Studio temporary files
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+## Build results
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Rr]eleases/
+x64/
+x86/
+[Ww][Ii][Nn]32/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+## Visual Studio profiler
+*.psess
+*.vsp
+*.vspx
+*.sap
+
+## Visual Studio cache/options
+.vs/
+*.vssscc
+*.vspscc
+
+## ReSharper
+_ReSharper*/
+*.[Rr]e[Ss]harper
+*.DotSettings.user
+
+# ============================================================================
+# MODUSTOOLBOX - Windows only (PSoC 6 / Infineon)
+# ============================================================================
+# Based on: https://github.com/Infineon/mtb-example-hal-hello-world/.gitignore
+# Removed: IAR, macOS, µVision, Visual Studio specific entries
+
+# ModusToolbox build artifacts
+build/
+Build/
+Debug/
+Release/
+GeneratedSource/
+ExportTemplate/
+
+# ModusToolbox generated files
+.cyignore
+*.cyprj.*.backup
+*.cyacd2
+Generated_Source/
+codegentemp/
+
+# ModusToolbox libraries and dependencies
+libs/
+deps/
+mtb_shared/
+
+# Eclipse (used by ModusToolbox IDE)
+.cproject
+.project
+.settings/
+.metadata/
+
+# GCC ARM build output
+*.elf
+*.hex
+*.bin
+*.map
+*.lst
+*.o
+*.d
+*.su
+
+# Cypress/Infineon specific
+*.cyfit
+*.cycdx
+*.rpt
+*.zip
+
+# BSP linker scripts generated
+linker_directives.ld
+
+# ============================================================================
+# KICAD
+# ============================================================================
+
+*.bak
+*.bck
+*-bak
+*-cache.lib
+*-rescue.lib
+*-save.kicad_pcb
+*-save.pro
+fp-info-cache
+*.kicad_pcb-bak
+*.sch-bak
+~*.tmp
+
+# ============================================================================
+# PYTHON
+# ============================================================================
+
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+pip-log.txt
+pip-delete-this-directory.txt
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+*.cover
+.hypothesis/
+
+# ============================================================================
+# GENERAL IDE / OS
+# ============================================================================
+
+# VSCode
+.vscode/
+
+# JetBrains IDEs
+.idea/
+
+# Vim
+*.swp
+*.swo
+*~
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# ============================================================================
+# MISCELLANEOUS
+# ============================================================================
+
+# Large binary files (if not needed in repo)
+*.a
+
+# Logs
+*.log
+logs/
