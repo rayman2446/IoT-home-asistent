@@ -1,10 +1,5 @@
 # [smarthome heating]
 
-> **⚠️ Verander deze titel naar de naam van jullie project!**
-
-![Overzicht](./docs/images/Overview.jpg)
-> **⚠️ Vervang deze afbeelding door een foto van jullie project**
-
 ## Beschrijving
 
 Voeg hier een korte beschrijving toe van jullie project. Leg uit:
